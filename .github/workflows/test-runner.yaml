@@ -1,0 +1,49 @@
+name: Test Runner
+on:
+  push:
+    branchs:
+      - main
+
+jobs:
+  verify-runner:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Print runner info
+        run: |
+          echo "=== Runner Environment ==="
+          echo "Hostname: $(hostname)"
+          echo "OS: $(uname -a)"
+          echo "User: $(whoami)"
+          echo "Working Dir: $(pwd)"
+          echo "CPU Cores: $(nproc)"
+          echo "Memory:"
+          free -h
+          echo "Disk:"
+          df -h /
+          echo "=========================="
+
+      - name: Verify Docker
+        run: |
+          echo "=== Docker Verification ==="
+          docker --version
+          docker run --rm hello-world
+          echo "Docker is working correctly!"
+          echo "==========================="
+
+      - name: Verify AWS CLI
+        run: |
+          echo "=== AWS CLI Verification ==="
+          aws --version
+          aws sts get-caller-identity
+          echo "AWS Region: ${AWS_REGION:-us-west-2}"
+          echo "AWS CLI is configured correctly!"
+          echo "============================="
+
+      - name: Verify Git
+        run: |
+          echo "=== Git Verification ==="
+          git --version
+          echo "Git is available]!"
+          echo "======================"
