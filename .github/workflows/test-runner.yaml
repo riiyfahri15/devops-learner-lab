@@ -27,8 +27,8 @@ jobs:
       - name: Verify Docker
         run: |
           echo "=== Docker Verification ==="
-          docker --version
-          docker run --rm hello-world
+          sudo docker --version
+          sudo docker run --rm hello-world
           echo "Docker is working correctly!"
           echo "==========================="
 
