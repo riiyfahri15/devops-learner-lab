@@ -1,0 +1,93 @@
+# =============================================================================
+# TechnoDev - CI Pipeline
+# LKS Nasional 2026 · Cloud Computing · Modul 3
+# Task 16: Build + test on pull request
+# =============================================================================
+
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: self-hosted
+    env:
+      AWS_REGION: us-west-2
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install linting tools
+        run: pip install flake8
+
+      - name: Python lint - user-api
+        run: flake8 lambda/user-api/app.py --max-line-length=120 --ignore=E501,W503
+
+      - name: Python lint - order-api
+        run: flake8 lambda/order-api/app.py --max-line-length=120 --ignore=E501,W503
+
+      - name: Python lint - notification-worker
+        run: flake8 lambda/notification-worker/app.py --max-line-length=120 --ignore=E501,W503
+
+      - name: Python lint - websocket-api
+        run: flake8 lambda/websocket-api/app.py --max-line-length=120 --ignore=E501,W503
+
+      - name: Build Docker image - user-api
+        run: docker build -t devops/user-api:test lambda/user-api/
+
+      - name: Build Docker image - order-api
+        run: docker build -t devops/order-api:test lambda/order-api/
+
+      - name: Build Docker image - notification-worker
+        run: docker build -t devops/notif-worker:test lambda/notification-worker/
+
+      - name: Build Docker image - websocket-api
+        run: docker build -t devops/websocket-api:test lambda/websocket-api/
+
+      - name: Test Lambda handler imports - user-api
+        run: |
+          docker run --rm devops/user-api:test \
+            python -c "import app; print('user-api handler OK')"
+
+      - name: Test Lambda handler imports - order-api
+        run: |
+          docker run --rm devops/order-api:test \
+            python -c "import app; print('order-api handler OK')"
+
+      - name: Test Lambda handler imports - notification-worker
+        run: |
+          docker run --rm devops/notif-worker:test \
+            python -c "import app; print('notification-worker handler OK')"
+
+      - name: Test Lambda handler imports - websocket-api
+        run: |
+          docker run --rm devops/websocket-api:test \
+            python -c "import app; print('websocket-api handler OK')"
+
+      - name: Verify frontend
+        run: |
+          test -f frontend/index.html
+          echo "frontend/index.html exists"
+          grep -q "TechnoDev" frontend/index.html
+          echo "Frontend content verified"
+
+      - name: Verify SQL schema
+        run: |
+          test -f sql/schema.sql
+          echo "sql/schema.sql exists"
+          grep -q "CREATE TABLE" sql/schema.sql
+          echo "SQL schema content verified"
+          grep -q "ws_connections" sql/schema.sql
+          echo "WebSocket table in schema verified"
+
+      - name: Cleanup test images
+        if: always()
+        run: |
+          docker rmi devops/user-api:test devops/order-api:test devops/notif-worker:test devops/websocket-api:test 2>/dev/null || true

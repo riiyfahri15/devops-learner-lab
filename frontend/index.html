@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="emerald">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechnoDev Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-base-200">
+
+    <!-- Login Page (shown when not authenticated) -->
+    <div id="loginPage" class="hidden">
+        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
+            <div class="card w-96 bg-base-100 shadow-xl">
+                <div class="card-body items-center text-center">
+                    <div class="bg-gradient-to-r from-primary to-secondary text-primary-content rounded-2xl p-6 mb-4 w-full">
+                        <h1 class="text-2xl font-bold">TechnoDev</h1>
+                        <p class="text-sm opacity-80 mt-1">E-Commerce Platform</p>
+                    </div>
+                    <h2 class="card-title">Welcome Back</h2>
+                    <p class="text-sm text-base-content/60 mb-4">Sign in to access the dashboard</p>
+                    <button onclick="cognitoLogin()" class="btn btn-primary btn-wide">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
+                        Sign in with Cognito
+                    </button>
+                    <div id="loginError" class="hidden text-error text-sm mt-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App (shown when authenticated) -->
+    <div id="mainApp" class="hidden">
+    <!-- Hero Header -->
+    <div class="bg-gradient-to-r from-primary to-secondary text-primary-content py-6 px-4 text-center shadow-lg">
+        <div class="flex items-center justify-center gap-4">
+            <div class="flex-1">
+                <h1 class="text-3xl font-bold">TechnoDev Dashboard</h1>
+                <p class="opacity-90 text-sm mt-1">E-Commerce Platform &mdash; Users & Orders Management</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="userBadge" class="badge badge-lg badge-ghost text-primary-content/80 hidden"></span>
+                <button onclick="cognitoLogout()" class="btn btn-sm btn-ghost text-primary-content hover:bg-primary-content/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HTTP API Config Bar -->
+    <div class="bg-base-100 border-b border-base-300 px-4 md:px-8 py-3">
+        <div class="flex flex-wrap items-center gap-3">
+            <span class="badge badge-lg badge-success gap-1">
+                <span class="w-2 h-2 rounded-full bg-current"></span>
+                HTTP API
+            </span>
+            <div class="form-control flex-1 min-w-[250px]">
+                <input type="text" id="apiUrl" placeholder="https://your-api-id.execute-api.us-west-2.amazonaws.com/prod"
+                    class="input input-bordered input-sm w-full" />
+            </div>
+            <button onclick="saveApiUrl()" class="btn btn-primary btn-sm">Connect</button>
+        </div>
+    </div>
+
+    <!-- WebSocket Config Bar -->
+    <div class="bg-base-100 border-b border-base-300 px-4 md:px-8 py-3">
+        <div class="flex flex-wrap items-center gap-3">
+            <span id="wsBadge" class="badge badge-lg badge-error gap-1">
+                <span class="w-2 h-2 rounded-full bg-current"></span>
+                WebSocket
+            </span>
+            <div class="form-control flex-1 min-w-[250px]">
+                <input type="text" id="wsUrl" placeholder="wss://your-ws-id.execute-api.us-west-2.amazonaws.com/prod"
+                    class="input input-bordered input-sm w-full" />
+            </div>
+            <button onclick="toggleWs()" id="wsToggleBtn" class="btn btn-primary btn-sm">Connect</button>
+            <span id="wsStatus" class="text-xs text-base-content/50">Disconnected</span>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="bg-base-100 border-b-2 border-base-300 px-4 md:px-8">
+        <div class="tabs tabs-bordered">
+            <a class="tab tab-active" onclick="switchTab('products')" id="tab-products">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                Products
+            </a>
+            <a class="tab" onclick="switchTab('users')" id="tab-users">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                Users
+            </a>
+            <a class="tab" onclick="switchTab('orders')" id="tab-orders">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                Orders
+            </a>
+            <a class="tab" onclick="switchTab('realtime')" id="tab-realtime">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                Real-Time
+                <span id="rtBadge" class="badge badge-xs badge-error hidden ml-1">0</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="container mx-auto max-w-7xl px-4 py-6">
+
+        <!-- Products Section -->
+        <div id="section-products" class="space-y-4">
+            <div class="flex justify-between items-center flex-wrap gap-2">
+                <h2 class="text-xl font-bold">Products</h2>
+                <button class="btn btn-primary btn-sm" onclick="loadProducts()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    Refresh
+                </button>
+            </div>
+            <div id="productsContent" class="overflow-x-auto">
+                <div class="flex justify-center p-8"><span class="loading loading-spinner loading-lg"></span></div>
+            </div>
+        </div>
+
+        <!-- Users Section -->
+        <div id="section-users" class="hidden space-y-4">
+            <div class="flex justify-between items-center flex-wrap gap-2">
+                <h2 class="text-xl font-bold">Users</h2>
+                <button class="btn btn-primary btn-sm" onclick="openModal('user')">+ Add User</button>
+            </div>
+            <div id="usersContent" class="overflow-x-auto">
+                <div class="flex justify-center p-8"><span class="loading loading-spinner loading-lg"></span></div>
+            </div>
+        </div>
+
+        <!-- Orders Section -->
+        <div id="section-orders" class="hidden space-y-4">
+            <div class="flex justify-between items-center flex-wrap gap-2">
+                <h2 class="text-xl font-bold">Orders</h2>
+                <button class="btn btn-primary btn-sm" onclick="openModal('order')">+ Create Order</button>
+            </div>
+            <div id="ordersContent" class="overflow-x-auto">
+                <div class="flex justify-center p-8"><span class="loading loading-spinner loading-lg"></span></div>
+            </div>
+        </div>
+
+        <!-- Real-Time Section -->
+        <div id="section-realtime" class="hidden space-y-4">
+            <div class="flex justify-between items-center flex-wrap gap-2">
+                <h2 class="text-xl font-bold">
+                    Real-Time Events
+                    <span class="text-sm font-normal text-base-content/50 ml-2">WebSocket</span>
+                </h2>
+                <div class="flex gap-2 flex-wrap">
+                    <button class="btn btn-primary btn-sm" onclick="wsSendPing()">Ping</button>
+                    <button class="btn btn-success btn-sm" onclick="wsGetConnections()">Connections</button>
+                    <button class="btn btn-warning btn-sm" onclick="clearFeed()">Clear Feed</button>
+                </div>
+            </div>
+            <div id="rtFeed" class="bg-neutral rounded-xl p-4 font-mono text-sm h-96 overflow-y-auto space-y-1">
+                <div class="text-neutral-content/50 text-center py-12">
+                    <p class="text-lg">Waiting for events...</p>
+                    <p class="text-xs mt-2">Connect via WebSocket to see real-time updates</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <dialog id="userModal" class="modal">
+        <div class="modal-box">
+            <h3 id="userModalTitle" class="font-bold text-lg">Add New User</h3>
+            <input type="hidden" id="editUserId">
+            <div class="py-4 space-y-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-semibold">Username *</span></label>
+                    <input type="text" id="userUsername" class="input input-bordered w-full" required />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-semibold">Email *</span></label>
+                    <input type="email" id="userEmail" class="input input-bordered w-full" required />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-semibold">Full Name *</span></label>
+                    <input type="text" id="userFullName" class="input input-bordered w-full" required />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Phone</span></label>
+                    <input type="text" id="userPhone" class="input input-bordered w-full" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Address</span></label>
+                    <textarea id="userAddress" class="textarea textarea-bordered w-full" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-action">
+                <button class="btn" onclick="closeModal('user')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveUser()">Save</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <!-- Order Modal -->
+    <dialog id="orderModal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Create New Order</h3>
+            <div class="py-4 space-y-3">
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-semibold">User *</span></label>
+                    <select id="orderUser" class="select select-bordered w-full"></select>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-semibold">Product *</span></label>
+                    <select id="orderProduct" class="select select-bordered w-full" onchange="updateOrderTotal()"></select>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-semibold">Quantity *</span></label>
+                    <input type="number" id="orderQuantity" class="input input-bordered w-full" min="1" value="1" onchange="updateOrderTotal()" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Total Price</span></label>
+                    <input type="text" id="orderTotal" class="input input-bordered w-full bg-base-200" readonly />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Shipping Address</span></label>
+                    <textarea id="orderAddress" class="textarea textarea-bordered w-full" rows="2"></textarea>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text">Notes</span></label>
+                    <textarea id="orderNotes" class="textarea textarea-bordered w-full" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-action">
+                <button class="btn" onclick="closeModal('order')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveOrder()">Create Order</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <!-- Status Update Modal -->
+    <dialog id="statusModal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">Update Order Status</h3>
+            <input type="hidden" id="statusOrderId">
+            <div class="py-4">
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-semibold">New Status</span></label>
+                    <select id="statusSelect" class="select select-bordered w-full">
+                        <option value="pending">Pending</option>
+                        <option value="processing">Processing</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-action">
+                <button class="btn" onclick="closeModal('status')">Cancel</button>
+                <button class="btn btn-primary" onclick="updateOrderStatus()">Update</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    </div><!-- end mainApp -->
+
+    <script>
+        // ==================== Cognito Auth ====================
+        // Injected by deploy.sh at deploy time
+        const COGNITO_DOMAIN = window.COGNITO_DOMAIN || "devops-auth.auth.us-west-2.amazoncognito.com";
+        const COGNITO_CLIENT_ID = window.COGNITO_CLIENT_ID || "c4i2ucnvpssvrof4ga5gth44o";
+        const COGNITO_REDIRECT_URI = window.COGNITO_REDIRECT_URI || window.location.origin + window.location.pathname;
+
+        function getCognitoToken() {
+            // Check URL hash first (OAuth implicit grant callback)
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                const params = new URLSearchParams(hash);
+                const accessToken = params.get('access_token');
+                const idToken = params.get('id_token');
+                const expiresIn = params.get('expires_in');
+                const error = params.get('error');
+                if (error) {
+                    document.getElementById('loginError').textContent = params.get('error_description') || error;
+                    document.getElementById('loginError').classList.remove('hidden');
+                    window.location.hash = '';
+                    return null;
+                }
+                if (accessToken) {
+                    const expiry = Date.now() + (parseInt(expiresIn || '3600') * 1000);
+                    localStorage.setItem('technodev_access_token', accessToken);
+                    localStorage.setItem('technodev_id_token', idToken || '');
+                    localStorage.setItem('technodev_token_expiry', expiry.toString());
+                    // Parse user info from id_token payload
+                    try {
+                        const payload = JSON.parse(atob(idToken.split('.')[1]));
+                        localStorage.setItem('technodev_username', payload['cognito:username'] || payload.email || 'user');
+                        localStorage.setItem('technodev_email', payload.email || '');
+                    } catch(e) {}
+                    // Clean URL hash
+                    window.location.hash = '';
+                    return accessToken;
+                }
+            }
+            // Check stored token
+            const stored = localStorage.getItem('technodev_access_token');
+            const expiry = parseInt(localStorage.getItem('technodev_token_expiry') || '0');
+            if (stored && Date.now() < expiry) return stored;
+            // Token expired
+            if (stored) { localStorage.removeItem('technodev_access_token'); localStorage.removeItem('technodev_id_token'); localStorage.removeItem('technodev_token_expiry'); }
+            return null;
+        }
+
+        function cognitoLogin() {
+            if (!COGNITO_DOMAIN || !COGNITO_CLIENT_ID) {
+                document.getElementById('loginError').textContent = 'Cognito not configured. Set COGNITO_DOMAIN and COGNITO_CLIENT_ID.';
+                document.getElementById('loginError').classList.remove('hidden');
+                return;
+            }
+            const loginUrl = `https://${COGNITO_DOMAIN}/login?response_type=token&client_id=${COGNITO_CLIENT_ID}&redirect_uri=${encodeURIComponent(COGNITO_REDIRECT_URI)}&scope=openid+email+profile`;
+            window.location.href = loginUrl;
+        }
+
+        function cognitoLogout() {
+            localStorage.removeItem('technodev_access_token');
+            localStorage.removeItem('technodev_id_token');
+            localStorage.removeItem('technodev_token_expiry');
+            localStorage.removeItem('technodev_username');
+            localStorage.removeItem('technodev_email');
+            if (ws) { ws.close(); ws = null; }
+            if (COGNITO_DOMAIN && COGNITO_CLIENT_ID) {
+                const logoutUrl = `https://${COGNITO_DOMAIN}/logout?client_id=${COGNITO_CLIENT_ID}&logout_uri=${encodeURIComponent(COGNITO_REDIRECT_URI)}`;
+                window.location.href = logoutUrl;
+            } else {
+                showLogin();
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+        }
+
+        function showApp() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            const username = localStorage.getItem('technodev_username') || '';
+            const badge = document.getElementById('userBadge');
+            if (username) { badge.textContent = username; badge.classList.remove('hidden'); }
+        }
+
+        // State
+        // window.API_BASE_URL / window.WS_ENDPOINT_URL are injected by deploy.sh at
+        // deploy time with the current infrastructure's endpoints. They take priority
+        // over localStorage so that a redeploy always points the dashboard at the
+        // live API/WebSocket, even if a browser has a stale URL cached from a
+        // previous deployment (e.g. after the API Gateway was recreated with a new
+        // API ID). Manual overrides via the config bar still persist to localStorage.
+        let API_BASE = window.API_BASE_URL || localStorage.getItem('technodev_api_url') || '';
+        let WS_URL = window.WS_ENDPOINT_URL || localStorage.getItem('technodev_ws_url') || '';
+        if (window.API_BASE_URL) localStorage.setItem('technodev_api_url', window.API_BASE_URL);
+        if (window.WS_ENDPOINT_URL) localStorage.setItem('technodev_ws_url', window.WS_ENDPOINT_URL);
+        let ws = null;
+        let wsReconnectTimer = null;
+        let rtEventCount = 0;
+        let cachedUsers = [];
+        let cachedProducts = [];
+        let accessToken = null;
+
+        // Init
+        window.addEventListener('DOMContentLoaded', () => {
+            accessToken = getCognitoToken();
+            if (!accessToken && COGNITO_DOMAIN && COGNITO_CLIENT_ID) {
+                showLogin();
+                return;
+            }
+            showApp();
+            document.getElementById('apiUrl').value = API_BASE;
+            document.getElementById('wsUrl').value = WS_URL;
+            if (API_BASE) loadAll();
+            if (WS_URL) connectWs();
+        });
+
+        // Toast
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const alertClass = { success: 'alert-success', error: 'alert-error', info: 'alert-info' }[type] || 'alert-info';
+            const toast = document.createElement('div');
+            toast.className = `alert ${alertClass} text-sm shadow-lg`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        // API
+        function saveApiUrl() {
+            API_BASE = document.getElementById('apiUrl').value.trim().replace(/\/+$/, '');
+            localStorage.setItem('technodev_api_url', API_BASE);
+            if (API_BASE) { loadAll(); showToast('API URL saved. Connecting...', 'success'); }
+        }
+
+        async function apiCall(path, method = 'GET', body = null) {
+            if (!API_BASE) { showToast('Please set API Gateway URL first', 'error'); return null; }
+            try {
+                const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+                if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+                const opts = { method, headers };
+                if (body) opts.body = JSON.stringify(body);
+                const resp = await fetch(`${API_BASE}${path}`, opts);
+                const data = await resp.json();
+                if (!resp.ok) { showToast(data.error || `HTTP ${resp.status}`, 'error'); return null; }
+                return data;
+            } catch (err) { showToast('Network error: ' + err.message, 'error'); return null; }
+        }
+
+        // Tabs
+        function switchTab(tab) {
+            ['products', 'users', 'orders', 'realtime'].forEach(t => {
+                document.getElementById(`section-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).classList.remove('tab-active');
+            });
+            document.getElementById(`section-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            if (tab === 'realtime') {
+                rtEventCount = 0;
+                const badge = document.getElementById('rtBadge');
+                badge.classList.add('hidden');
+                badge.textContent = '0';
+            }
+        }
+
+        // Load all
+        function loadAll() { loadProducts(); loadUsers(); loadOrders(); }
+
+        // Products
+        async function loadProducts() {
+            const el = document.getElementById('productsContent');
+            el.innerHTML = '<div class="flex justify-center p-8"><span class="loading loading-spinner loading-lg"></span></div>';
+            const data = await apiCall('/products');
+            if (!data) { el.innerHTML = '<div class="alert alert-warning">Could not load products</div>'; return; }
+            const products = data.products || data || [];
+            cachedProducts = products;
+            if (products.length === 0) { el.innerHTML = '<div class="alert alert-info">No products found</div>'; return; }
+            el.innerHTML = `<div class="overflow-x-auto"><table class="table table-zebra w-full">
+                <thead><tr><th>SKU</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th></tr></thead>
+                <tbody>${products.map(p => `<tr>
+                    <td class="font-mono text-xs">${p.sku}</td>
+                    <td><strong>${p.name}</strong><br><span class="text-xs text-base-content/50">${p.description || ''}</span></td>
+                    <td>${p.category || '-'}</td>
+                    <td class="font-semibold text-primary">Rp ${Number(p.price).toLocaleString('id-ID')}</td>
+                    <td><span class="badge ${p.stock <= 5 ? 'badge-error' : 'badge-success'}">${p.stock}</span></td>
+                </tr>`).join('')}</tbody></table></div>`;
+        }
+
+        // Users
+        async function loadUsers() {
+            const el = document.getElementById('usersContent');
+            el.innerHTML = '<div class="flex justify-center p-8"><span class="loading loading-spinner loading-lg"></span></div>';
+            const data = await apiCall('/users');
+            if (!data) { el.innerHTML = '<div class="alert alert-warning">Could not load users <button class="btn btn-sm ml-2" onclick="loadUsers()">Retry</button></div>'; return; }
+            const users = data.users || data || [];
+            cachedUsers = users;
+            if (users.length === 0) { el.innerHTML = '<div class="alert alert-info">No users yet <button class="btn btn-sm btn-primary ml-2" onclick="openModal(\'user\')">+ Add First User</button></div>'; return; }
+            el.innerHTML = `<div class="overflow-x-auto"><table class="table table-zebra w-full">
+                <thead><tr><th>Username</th><th>Full Name</th><th>Email</th><th>Phone</th><th>Address</th><th>Actions</th></tr></thead>
+                <tbody>${users.map(u => `<tr>
+                    <td class="font-bold">${u.username}</td><td>${u.full_name}</td><td>${u.email}</td><td>${u.phone || '-'}</td><td>${u.address || '-'}</td>
+                    <td class="flex gap-1 flex-wrap">
+                        <button class="btn btn-warning btn-xs" onclick='editUser(${JSON.stringify(u)})'>Edit</button>
+                        <button class="btn btn-error btn-xs" onclick="deleteUser('${u.id}','${u.username}')">Delete</button>
+                    </td>
+                </tr>`).join('')}</tbody></table></div>`;
+        }
+
+        // Orders
+        async function loadOrders() {
+            const el = document.getElementById('ordersContent');
+            el.innerHTML = '<div class="flex justify-center p-8"><span class="loading loading-spinner loading-lg"></span></div>';
+            const data = await apiCall('/orders');
+            if (!data) { el.innerHTML = '<div class="alert alert-warning">Could not load orders <button class="btn btn-sm ml-2" onclick="loadOrders()">Retry</button></div>'; return; }
+            const orders = data.orders || data || [];
+            if (orders.length === 0) { el.innerHTML = '<div class="alert alert-info">No orders yet <button class="btn btn-sm btn-primary ml-2" onclick="openModal(\'order\')">+ Create First Order</button></div>'; return; }
+            const statusBadge = s => `<span class="badge badge-${s==='pending'?'warning':s==='processing'?'info':s==='shipped'?'accent':s==='delivered'?'success':'error'} badge-sm">${s}</span>`;
+            el.innerHTML = `<div class="overflow-x-auto"><table class="table table-zebra w-full">
+                <thead><tr><th>Order ID</th><th>User</th><th>Product</th><th>Qty</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>${orders.map(o => `<tr>
+                    <td class="font-mono text-xs">${String(o.id).substring(0,8)}...</td>
+                    <td>${o.username || o.user_id || '-'}</td>
+                    <td>${o.product_name || o.product_id || '-'}</td>
+                    <td>${o.quantity}</td>
+                    <td class="font-semibold text-primary">Rp ${Number(o.total_price).toLocaleString('id-ID')}</td>
+                    <td>${statusBadge(o.status)}</td>
+                    <td class="flex gap-1 flex-wrap">
+                        <button class="btn btn-warning btn-xs" onclick="openStatusModal('${o.id}','${o.status}')">Status</button>
+                        ${o.status === 'pending' ? `<button class="btn btn-error btn-xs" onclick="deleteOrder('${o.id}')">Delete</button>` : ''}
+                    </td>
+                </tr>`).join('')}</tbody></table></div>`;
+        }
+
+        // Modals
+        function openModal(type) {
+            if (type === 'user') {
+                document.getElementById('editUserId').value = '';
+                document.getElementById('userModalTitle').textContent = 'Add New User';
+                ['userUsername','userEmail','userFullName','userPhone','userAddress'].forEach(id => document.getElementById(id).value = '');
+                document.getElementById('userModal').showModal();
+            } else if (type === 'order') {
+                document.getElementById('orderUser').innerHTML = cachedUsers.map(u => `<option value="${u.id}">${u.full_name} (${u.username})</option>`).join('');
+                document.getElementById('orderProduct').innerHTML = cachedProducts.map(p => `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name} - Rp ${Number(p.price).toLocaleString('id-ID')} (${p.stock} in stock)</option>`).join('');
+                document.getElementById('orderQuantity').value = 1;
+                document.getElementById('orderAddress').value = '';
+                document.getElementById('orderNotes').value = '';
+                updateOrderTotal();
+                document.getElementById('orderModal').showModal();
+            }
+        }
+        function closeModal(type) { document.getElementById(type + 'Modal').close(); }
+        function editUser(user) {
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('userModalTitle').textContent = 'Edit User';
+            document.getElementById('userUsername').value = user.username;
+            document.getElementById('userEmail').value = user.email;
+            document.getElementById('userFullName').value = user.full_name;
+            document.getElementById('userPhone').value = user.phone || '';
+            document.getElementById('userAddress').value = user.address || '';
+            document.getElementById('userModal').showModal();
+        }
+        function openStatusModal(orderId, currentStatus) {
+            document.getElementById('statusOrderId').value = orderId;
+            document.getElementById('statusSelect').value = currentStatus;
+            document.getElementById('statusModal').showModal();
+        }
+
+        // CRUD
+        async function saveUser() {
+            const id = document.getElementById('editUserId').value;
+            const body = {
+                username: document.getElementById('userUsername').value.trim(),
+                email: document.getElementById('userEmail').value.trim(),
+                full_name: document.getElementById('userFullName').value.trim(),
+                phone: document.getElementById('userPhone').value.trim() || null,
+                address: document.getElementById('userAddress').value.trim() || null
+            };
+            if (!body.username || !body.email || !body.full_name) { showToast('Username, Email, and Full Name are required', 'error'); return; }
+            const result = id ? await apiCall(`/users/${id}`, 'PUT', body) : await apiCall('/users', 'POST', body);
+            if (result) { closeModal('user'); showToast(id ? 'User updated!' : 'User created!', 'success'); loadUsers(); }
+        }
+        async function deleteUser(id, username) {
+            if (!confirm(`Delete user "${username}"? This action cannot be undone.`)) return;
+            const result = await apiCall(`/users/${id}`, 'DELETE');
+            if (result) { showToast('User deleted', 'success'); loadUsers(); }
+        }
+        async function saveOrder() {
+            const body = {
+                user_id: document.getElementById('orderUser').value,
+                product_id: document.getElementById('orderProduct').value,
+                quantity: parseInt(document.getElementById('orderQuantity').value),
+                shipping_address: document.getElementById('orderAddress').value.trim() || null,
+                notes: document.getElementById('orderNotes').value.trim() || null
+            };
+            if (!body.user_id || !body.product_id || !body.quantity || body.quantity < 1) { showToast('Please fill all required fields', 'error'); return; }
+            const result = await apiCall('/orders', 'POST', body);
+            if (result) { closeModal('order'); showToast('Order created!', 'success'); loadOrders(); loadProducts(); }
+        }
+        async function updateOrderStatus() {
+            const result = await apiCall(`/orders/${document.getElementById('statusOrderId').value}`, 'PUT', { status: document.getElementById('statusSelect').value });
+            if (result) { closeModal('status'); showToast('Order status updated!', 'success'); loadOrders(); }
+        }
+        async function deleteOrder(id) {
+            if (!confirm('Delete/cancel this order?')) return;
+            const result = await apiCall(`/orders/${id}`, 'DELETE');
+            if (result) { showToast('Order deleted', 'success'); loadOrders(); loadProducts(); }
+        }
+        function updateOrderTotal() {
+            const sel = document.getElementById('orderProduct');
+            const opt = sel.options[sel.selectedIndex];
+            if (!opt) { document.getElementById('orderTotal').value = ''; return; }
+            document.getElementById('orderTotal').value = 'Rp ' + (parseFloat(opt.dataset.price || 0) * parseInt(document.getElementById('orderQuantity').value || 0)).toLocaleString('id-ID');
+        }
+
+        // ==================== WebSocket ====================
+        function toggleWs() {
+            if (ws && ws.readyState === WebSocket.OPEN) { disconnectWs(); }
+            else { WS_URL = document.getElementById('wsUrl').value.trim(); localStorage.setItem('technodev_ws_url', WS_URL); if (WS_URL) connectWs(); else showToast('Please enter WebSocket URL', 'error'); }
+        }
+        function connectWs() {
+            if (!WS_URL) return;
+            if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+            const wsUser = localStorage.getItem('technodev_username') || 'admin';
+            try { ws = new WebSocket(WS_URL + '?username=' + encodeURIComponent(wsUser) + (accessToken ? '&token=' + encodeURIComponent(accessToken) : '')); }
+            catch (e) { showToast('Invalid WebSocket URL: ' + e.message, 'error'); return; }
+            ws.onopen = () => {
+                const badge = document.getElementById('wsBadge');
+                badge.className = 'badge badge-lg badge-success gap-1'; badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-current"></span>WebSocket';
+                document.getElementById('wsStatus').textContent = 'Connected as ' + wsUser;
+                document.getElementById('wsStatus').className = 'text-xs text-success font-semibold';
+                showToast('WebSocket connected!', 'success');
+                appendRtItem('system', 'Connected as ' + wsUser);
+            };
+            ws.onmessage = (event) => { try { handleWsMessage(JSON.parse(event.data)); } catch (e) { appendRtItem('raw', event.data); } };
+            ws.onclose = () => {
+                const badge = document.getElementById('wsBadge');
+                badge.className = 'badge badge-lg badge-error gap-1'; badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-current"></span>WebSocket';
+                document.getElementById('wsStatus').textContent = 'Disconnected';
+                document.getElementById('wsStatus').className = 'text-xs text-base-content/50';
+                appendRtItem('system', 'WebSocket disconnected');
+                if (WS_URL) { clearTimeout(wsReconnectTimer); wsReconnectTimer = setTimeout(connectWs, 5000); }
+            };
+            ws.onerror = () => { appendRtItem('error', 'WebSocket error'); showToast('WebSocket error', 'error'); };
+        }
+        function disconnectWs() { clearTimeout(wsReconnectTimer); WS_URL = ''; localStorage.setItem('technodev_ws_url', ''); if (ws) { ws.close(); ws = null; } showToast('WebSocket disconnected', 'info'); }
+        function wsSend(data) { if (!ws || ws.readyState !== WebSocket.OPEN) { showToast('WebSocket not connected', 'error'); return false; } ws.send(JSON.stringify(data)); return true; }
+        function wsSendPing() { if (wsSend({ action: 'ping' })) appendRtItem('outgoing', 'Ping sent'); }
+        function wsGetConnections() { wsSend({ action: 'get_connections' }); }
+        function handleWsMessage(data) {
+            const action = data.action || 'unknown';
+            appendRtItem(action, JSON.stringify(data, null, 2));
+            if (document.getElementById('section-realtime').classList.contains('hidden')) {
+                rtEventCount++;
+                const badge = document.getElementById('rtBadge');
+                badge.textContent = rtEventCount; badge.classList.remove('hidden');
+            }
+            if (action === 'order_status_changed') { showToast(`Order ${String(data.order_id).substring(0,8)} → ${data.new_status}`, 'info'); loadOrders(); }
+            else if (action === 'notification') showToast(data.message, 'info');
+            else if (action === 'user_connected') showToast(`${data.username} connected`, 'info');
+            else if (action === 'user_disconnected') showToast(`${data.username} disconnected`, 'info');
+            else if (action === 'pong') showToast('Pong received!', 'success');
+            else if (action === 'connections_list') {
+                const list = (data.connections || []).map(c => `${c.username || 'anon'} (${String(c.connection_id).substring(0,12)}...)`).join(', ');
+                appendRtItem('info', `Active connections (${data.total}): ${list || 'none'}`);
+            }
+            else if (action === 'error') showToast('WS Error: ' + data.message, 'error');
+        }
+        function appendRtItem(type, text) {
+            const feed = document.getElementById('rtFeed');
+            const empty = feed.querySelector('.text-center'); if (empty) empty.remove();
+            const colorMap = { system: 'text-info', order_status_changed: 'text-warning', notification: 'text-success', user_connected: 'text-success', user_disconnected: 'text-error', pong: 'text-info', connections_list: 'text-secondary', error: 'text-error', outgoing: 'text-accent', info: 'text-accent-content' };
+            const item = document.createElement('div');
+            item.className = `text-neutral-content border-b border-neutral-content/10 pb-1`;
+            item.innerHTML = `<span class="text-neutral-content/40 text-xs">${new Date().toLocaleTimeString()}</span> <span class="font-bold text-xs ${colorMap[type] || 'text-neutral-content'}">[${type}]</span> <span class="text-xs break-all">${text}</span>`;
+            feed.insertBefore(item, feed.firstChild);
+            while (feed.children.length > 200) feed.removeChild(feed.lastChild);
+        }
+        function clearFeed() { document.getElementById('rtFeed').innerHTML = '<div class="text-neutral-content/50 text-center py-12"><p>Feed cleared. Waiting for events...</p></div>'; }
+    </script>
+</body>
+</html>
