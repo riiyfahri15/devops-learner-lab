@@ -348,3 +348,4 @@ def lambda_handler(event, context):
     finally:
         if conn:
             conn.close()
+            

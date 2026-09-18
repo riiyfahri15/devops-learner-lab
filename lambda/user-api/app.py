@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import uuid
+import boto3
 
 import boto3
 import psycopg2
@@ -313,3 +314,4 @@ def lambda_handler(event, context):
     finally:
         if conn:
             conn.close()
+            
