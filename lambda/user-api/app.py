@@ -63,17 +63,17 @@ def get_db_connection():
 
     secret = get_secret_value_response['SecretString']
 
-    secret = json.loads(secret)   
+    secret = json.loads(secret)
 
     conn = psycopg2.connect(
-            host=secret["host"],
-            port=secret["port"],
-            dbname=secret["db_name"],
-            user=secret["db_user"],
-            password=secret["db_password"],
-            connect_timeout=10,
+        host=secret["host"],
+        port=secret["port"],
+        dbname=secret["db_name"],
+        user=secret["db_user"],
+        password=secret["db_password"],
+        connect_timeout=10,
     )
-    
+
     conn.autocommit = False
     return conn
 
