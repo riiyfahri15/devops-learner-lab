@@ -40,16 +40,16 @@ jobs:
         run: flake8 lambda/websocket-api/app.py --max-line-length=120 --ignore=E501,W503
 
       - name: Build Docker image - user-api
-        run: docker build -t devops/user-api:test lambda/user-api/
+        run: sudo docker build -t devops/user-api:test lambda/user-api/
 
       - name: Build Docker image - order-api
-        run: docker build -t devops/order-api:test lambda/order-api/
+        run: sudo docker build -t devops/order-api:test lambda/order-api/
 
       - name: Build Docker image - notification-worker
-        run: docker build -t devops/notif-worker:test lambda/notification-worker/
+        run: sudo docker build -t devops/notif-worker:test lambda/notification-worker/
 
       - name: Build Docker image - websocket-api
-        run: docker build -t devops/websocket-api:test lambda/websocket-api/
+        run: sudo docker build -t devops/websocket-api:test lambda/websocket-api/
 
       - name: Test Lambda handler imports - user-api
         run: |
