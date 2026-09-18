@@ -53,22 +53,22 @@ jobs:
 
       - name: Test Lambda handler imports - user-api
         run: |
-          docker run --rm devops/user-api:test \
+          sudo docker run --rm devops/user-api:test \
             python -c "import app; print('user-api handler OK')"
 
       - name: Test Lambda handler imports - order-api
         run: |
-          docker run --rm devops/order-api:test \
+          sudo docker run --rm devops/order-api:test \
             python -c "import app; print('order-api handler OK')"
 
       - name: Test Lambda handler imports - notification-worker
         run: |
-          docker run --rm devops/notif-worker:test \
+          sudo docker run --rm devops/notif-worker:test \
             python -c "import app; print('notification-worker handler OK')"
 
       - name: Test Lambda handler imports - websocket-api
         run: |
-          docker run --rm devops/websocket-api:test \
+          sudo docker run --rm devops/websocket-api:test \
             python -c "import app; print('websocket-api handler OK')"
 
       - name: Verify frontend
