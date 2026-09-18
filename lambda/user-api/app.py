@@ -14,7 +14,6 @@ import json
 import logging
 import os
 import uuid
-import boto3
 
 import boto3
 import psycopg2
