@@ -42,19 +42,37 @@ SQS_CLIENT = boto3.client("sqs", region_name=os.environ.get("AWS_REGION", "us-we
 
 def get_db_connection():
     """Create a database connection using environment variables."""
-    host = os.environ.get("DB_HOST", "localhost")
-    port = os.environ.get("DB_PORT", "5432")
-    dbname = os.environ.get("DB_NAME", "devopsdb")
-    user = os.environ.get("DB_USER", "devopsadmin")
-    password = os.environ.get("DB_PASSWORD", "password")
+    # host = os.environ.get("DB_HOST", "localhost")
+    # port = os.environ.get("DB_PORT", "5432")
+    # dbname = os.environ.get("DB_NAME", "devopsdb")
+    # user = os.environ.get("DB_USER", "devopsadmin")
+    # password = os.environ.get("DB_PASSWORD", "password")
 
+    secret_name = os.environ.get("SECRET_NAME", "devops/rds-credentials")
+    region_name = os.environ.get("AWS_REGION", "us-west-2")
+    
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+    
+    get_secret_value_response = client.get_secret_value(
+        SecretId=secret_name
+    )
+    print(get_secret_value_response)
+    
+    secret = get_secret_value_response['SecretString']
+    
+    secret = json.loads(secret)   
+    
     conn = psycopg2.connect(
-        host=host,
-        port=int(port),
-        dbname=dbname,
-        user=user,
-        password=password,
-        connect_timeout=10,
+            host=secret["host"],
+            port=secret["port"],
+            dbname=secret["db_name"],
+            user=secret["db_user"],
+            password=secret["db_password"],
+            connect_timeout=10,
     )
     conn.autocommit = False
     return conn
