@@ -141,16 +141,16 @@ jobs:
             aws s3 cp frontend.zip "s3://${BUCKET}/${S3_KEY}" --region ${AWS_REGION}
             echo "udah upload ke s3"
 
-            DEPLOYMENT_ID=$(aws amplify create-deployment \
-              --app-id ${APP_ID} \
-              --branch-name main \
-              --region ${AWS_REGION} \
-              --query 'jobId' --output text)
+            # DEPLOYMENT_ID=$(aws amplify create-deployment \
+            #   --app-id ${APP_ID} \
+            #   --branch-name main \
+            #   --region ${AWS_REGION} \
+            #   --query 'jobId' --output text)
 
             aws amplify start-deployment \
               --app-id ${APP_ID} \
               --branch-name main \
-              --deployment-id ${DEPLOYMENT_ID} \
+              # --deployment-id ${DEPLOYMENT_ID} \
               --source-url "s3://${BUCKET}/${S3_KEY}" \
               --region ${AWS_REGION}
 

@@ -301,11 +301,11 @@
                     } catch(e) {}
                     // Clean URL hash
                     window.location.hash = '';
-                    return accessToken;
+                    return idToken;
                 }
             }
             // Check stored token
-            const stored = localStorage.getItem('technodev_access_token');
+            const stored = localStorage.getItem('technodev_id_token');
             const expiry = parseInt(localStorage.getItem('technodev_token_expiry') || '0');
             if (stored && Date.now() < expiry) return stored;
             // Token expired
