@@ -35,6 +35,7 @@ API_GW_CLIENT = boto3.client(
         "WEBSOCKET_ENDPOINT",
         "https://placeholder.execute-api.us-west-2.amazonaws.com/prod",
     ),
+    region_name=os.environ.get("AWS_REGION", "us-west-2")
 )
 SQS_CLIENT = boto3.client("sqs", region_name=os.environ.get("AWS_REGION", "us-west-2"))
 
