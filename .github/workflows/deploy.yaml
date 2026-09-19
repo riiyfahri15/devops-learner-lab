@@ -129,6 +129,7 @@ jobs:
             echo "Deploying to Amplify app: ${APP_ID}"
 
             # Create zip of frontend
+            sudo apt install zip -y
             cd frontend && zip -r ../frontend.zip . && cd ..
 
             # Create S3 key for deployment
