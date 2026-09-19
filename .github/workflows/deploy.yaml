@@ -132,11 +132,13 @@ jobs:
             cd frontend && zip -r ../frontend.zip . && cd ..
 
             # Create S3 key for deployment
+            echo "test upload"
             S3_KEY="deployments/${GITHUB_SHA::8}/frontend.zip"
             BUCKET="${PREFIX}-assets-${ACCOUNT_ID}"
 
             # Upload to S3 and start deployment
             aws s3 cp frontend.zip "s3://${BUCKET}/${S3_KEY}" --region ${AWS_REGION}
+            echo "udah upload ke s3"
 
             DEPLOYMENT_ID=$(aws amplify create-deployment \
               --app-id ${APP_ID} \
