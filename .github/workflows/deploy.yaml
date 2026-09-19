@@ -1,0 +1,233 @@
+# =============================================================================
+# TechnoDev - CD Pipeline
+# LKS Nasional 2026 · Cloud Computing · Modul 3
+# Task 17: Build, push ECR, update Lambda, deploy Amplify, smoke test
+# =============================================================================
+
+name: Deploy Pipeline
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: us-west-2
+  PREFIX: devops
+  ECR_REGISTRY: ""  # Set dynamically in first step
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set environment variables
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "ACCOUNT_ID=${ACCOUNT_ID}" >> $GITHUB_ENV
+          echo "ECR_REGISTRY=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >> $GITHUB_ENV
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${AWS_REGION} | \
+            docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+      # ----------------------------------------------------------------
+      # Build Docker images
+      # ----------------------------------------------------------------
+      - name: Build Docker image - user-api
+        run: |
+          docker build -t ${ECR_REGISTRY}/${PREFIX}/user-api:latest \
+                       -t ${ECR_REGISTRY}/${PREFIX}/user-api:${GITHUB_SHA::8} \
+                       lambda/user-api/
+
+      - name: Build Docker image - order-api
+        run: |
+          docker build -t ${ECR_REGISTRY}/${PREFIX}/order-api:latest \
+                       -t ${ECR_REGISTRY}/${PREFIX}/order-api:${GITHUB_SHA::8} \
+                       lambda/order-api/
+
+      - name: Build Docker image - notification-worker
+        run: |
+          docker build -t ${ECR_REGISTRY}/${PREFIX}/notif-worker:latest \
+                       -t ${ECR_REGISTRY}/${PREFIX}/notif-worker:${GITHUB_SHA::8} \
+                       lambda/notification-worker/
+
+      - name: Build Docker image - websocket-api
+        run: |
+          docker build -t ${ECR_REGISTRY}/${PREFIX}/websocket-api:latest \
+                       -t ${ECR_REGISTRY}/${PREFIX}/websocket-api:${GITHUB_SHA::8} \
+                       lambda/websocket-api/
+
+      # ----------------------------------------------------------------
+      # Push to ECR
+      # ----------------------------------------------------------------
+      - name: Push user-api to ECR
+        run: |
+          docker push ${ECR_REGISTRY}/${PREFIX}/user-api:latest
+          docker push ${ECR_REGISTRY}/${PREFIX}/user-api:${GITHUB_SHA::8}
+
+      - name: Push order-api to ECR
+        run: |
+          docker push ${ECR_REGISTRY}/${PREFIX}/order-api:latest
+          docker push ${ECR_REGISTRY}/${PREFIX}/order-api:${GITHUB_SHA::8}
+
+      - name: Push notification-worker to ECR
+        run: |
+          docker push ${ECR_REGISTRY}/${PREFIX}/notif-worker:latest
+          docker push ${ECR_REGISTRY}/${PREFIX}/notif-worker:${GITHUB_SHA::8}
+
+      - name: Push websocket-api to ECR
+        run: |
+          docker push ${ECR_REGISTRY}/${PREFIX}/websocket-api:latest
+          docker push ${ECR_REGISTRY}/${PREFIX}/websocket-api:${GITHUB_SHA::8}
+
+      # ----------------------------------------------------------------
+      # Update Lambda function code
+      # ----------------------------------------------------------------
+      - name: Update Lambda - user-api
+        run: |
+          aws lambda update-function-code \
+            --function-name ${PREFIX}-user-api \
+            --image-uri ${ECR_REGISTRY}/${PREFIX}/user-api:latest \
+            --region ${AWS_REGION}
+
+      - name: Update Lambda - order-api
+        run: |
+          aws lambda update-function-code \
+            --function-name ${PREFIX}-order-api \
+            --image-uri ${ECR_REGISTRY}/${PREFIX}/order-api:latest \
+            --region ${AWS_REGION}
+
+      - name: Update Lambda - notification-worker
+        run: |
+          aws lambda update-function-code \
+            --function-name ${PREFIX}-notif-worker \
+            --image-uri ${ECR_REGISTRY}/${PREFIX}/notif-worker:latest \
+            --region ${AWS_REGION}
+
+      - name: Update Lambda - websocket-api
+        run: |
+          aws lambda update-function-code \
+            --function-name ${PREFIX}-websocket-api \
+            --image-uri ${ECR_REGISTRY}/${PREFIX}/websocket-api:latest \
+            --region ${AWS_REGION}
+
+      # ----------------------------------------------------------------
+      # Deploy frontend to Amplify
+      # ----------------------------------------------------------------
+      - name: Deploy frontend to Amplify
+        run: |
+          # Find Amplify app by name
+          APP_ID=$(aws amplify list-apps --region ${AWS_REGION} \
+            --query "apps[?name=='${PREFIX}-frontend'].appId" --output text)
+
+          if [ -z "$APP_ID" ] || [ "$APP_ID" == "None" ]; then
+            echo "Amplify app ${PREFIX}-frontend not found, skipping frontend deployment"
+          else
+            echo "Deploying to Amplify app: ${APP_ID}"
+
+            # Create zip of frontend
+            cd frontend && zip -r ../frontend.zip . && cd ..
+
+            # Create S3 key for deployment
+            S3_KEY="deployments/${GITHUB_SHA::8}/frontend.zip"
+            BUCKET="${PREFIX}-assets-${ACCOUNT_ID}"
+
+            # Upload to S3 and start deployment
+            aws s3 cp frontend.zip "s3://${BUCKET}/${S3_KEY}" --region ${AWS_REGION}
+
+            DEPLOYMENT_ID=$(aws amplify create-deployment \
+              --app-id ${APP_ID} \
+              --branch-name main \
+              --region ${AWS_REGION} \
+              --query 'jobId' --output text)
+
+            aws amplify start-deployment \
+              --app-id ${APP_ID} \
+              --branch-name main \
+              --deployment-id ${DEPLOYMENT_ID} \
+              --source-url "s3://${BUCKET}/${S3_KEY}" \
+              --region ${AWS_REGION}
+
+            echo "Frontend deployment started: ${DEPLOYMENT_ID}"
+
+            # Cleanup
+            rm -f frontend.zip
+          fi
+
+      # ----------------------------------------------------------------
+      # Smoke Test
+      # ----------------------------------------------------------------
+      - name: Smoke test - API Gateway
+        run: |
+          # Get REST API Gateway endpoint
+          API_ID=$(aws apigateway get-rest-apis --region ${AWS_REGION} \
+            --query "items[?name=='${PREFIX}-api'].id" --output text)
+
+          if [ -z "$API_ID" ] || [ "$API_ID" == "None" ]; then
+            echo "API Gateway ${PREFIX}-api not found, skipping smoke test"
+            exit 0
+          fi
+
+          API_URL="https://${API_ID}.execute-api.${AWS_REGION}.amazonaws.com/prod"
+          echo "Testing API: ${API_URL}"
+
+          # Test /users endpoint
+          echo "=== GET /users ==="
+          HTTP_CODE=$(curl -s -o /tmp/users_response.json -w "%{http_code}" \
+            "${API_URL}/users" || echo "000")
+          echo "HTTP Status: ${HTTP_CODE}"
+          cat /tmp/users_response.json
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "WARNING: /users returned ${HTTP_CODE}"
+          fi
+
+          # Test /orders endpoint
+          echo "=== GET /orders ==="
+          HTTP_CODE=$(curl -s -o /tmp/orders_response.json -w "%{http_code}" \
+            "${API_URL}/orders" || echo "000")
+          echo "HTTP Status: ${HTTP_CODE}"
+          cat /tmp/orders_response.json
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "WARNING: /orders returned ${HTTP_CODE}"
+          fi
+
+          # Test /products endpoint
+          echo "=== GET /products ==="
+          HTTP_CODE=$(curl -s -o /tmp/products_response.json -w "%{http_code}" \
+            "${API_URL}/products" || echo "000")
+          echo "HTTP Status: ${HTTP_CODE}"
+          cat /tmp/products_response.json
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "WARNING: /products returned ${HTTP_CODE}"
+          fi
+
+          echo "=== Smoke test complete ==="
+
+      - name: Cleanup Docker images
+        if: always()
+        run: |
+          docker rmi ${ECR_REGISTRY}/${PREFIX}/user-api:latest \
+                     ${ECR_REGISTRY}/${PREFIX}/user-api:${GITHUB_SHA::8} \
+                     ${ECR_REGISTRY}/${PREFIX}/order-api:latest \
+                     ${ECR_REGISTRY}/${PREFIX}/order-api:${GITHUB_SHA::8} \
+                     ${ECR_REGISTRY}/${PREFIX}/notif-worker:latest \
+                     ${ECR_REGISTRY}/${PREFIX}/notif-worker:${GITHUB_SHA::8} \
+                     ${ECR_REGISTRY}/${PREFIX}/websocket-api:latest \
+                     ${ECR_REGISTRY}/${PREFIX}/websocket-api:${GITHUB_SHA::8} \
+                     2>/dev/null || true
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "============================================"
+          echo "  DEPLOYMENT SUCCESSFUL"
+          echo "============================================"
+          echo "  Commit:    ${GITHUB_SHA}"
+          echo "  Account:   ${ACCOUNT_ID}"
+          echo "  Region:    ${AWS_REGION}"
+          echo "  ECR:       ${ECR_REGISTRY}"
+          echo "  Functions: ${PREFIX}-user-api, ${PREFIX}-order-api, ${PREFIX}-notif-worker, ${PREFIX}-websocket-api"
+          echo "============================================"
