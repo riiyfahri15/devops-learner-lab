@@ -150,7 +150,6 @@ jobs:
             aws amplify start-deployment \
               --app-id ${APP_ID} \
               --branch-name main \
-              # --deployment-id ${DEPLOYMENT_ID} \
               --source-url "s3://${BUCKET}/${S3_KEY}" \
               --region ${AWS_REGION}
 
