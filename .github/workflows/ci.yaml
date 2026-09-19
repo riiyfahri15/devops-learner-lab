@@ -53,7 +53,6 @@ jobs:
 
       - name: Test Lambda handler imports - user-api
         run: |
-<<<<<<< HEAD
           sudo docker run --rm --entrypoint= python3 devops/user-api:test \
             -c "import app; print('user-api handler OK')"
 
@@ -71,25 +70,6 @@ jobs:
         run: |
           sudo docker run --rm --entrypoint= python3 devops/websocket-api:test \
             -c "import app; print('websocket-api handler OK')"
-=======
-          sudo docker run --rm devops/user-api:test \
-            `python -c "import app; print('user-api handler OK')"`
-
-      - name: Test Lambda handler imports - order-api
-        run: |
-          sudo docker run --rm devops/order-api:test \
-            `python -c "import app; print('order-api handler OK')"`
-
-      - name: Test Lambda handler imports - notification-worker
-        run: |
-          sudo docker run --rm devops/notif-worker:test \
-            `python -c "import app; print('notification-worker handler OK')"`
-
-      - name: Test Lambda handler imports - websocket-api
-        run: |
-          sudo docker run --rm devops/websocket-api:test \
-            `python -c "import app; print('websocket-api handler OK')"`
->>>>>>> b7c9f0715d8512a4fc73be9bdd14925550486934
 
       - name: Verify frontend
         run: |
